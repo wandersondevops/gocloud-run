@@ -27,11 +27,16 @@ type WeatherAPIResponse struct {
 }
 
 func getCEPInfo(cep string) (*ViaCEPResponse, error) {
+	logrus.Info("Consultando API ViaCEP para CEP: ", cep)
 	resp, err := http.Get(fmt.Sprintf("https://viacep.com.br/ws/%s/json/", cep))
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	bodyBytes, _ := ioutil.ReadAll(resp.Body)
+	bodyString := string(bodyBytes)
+	logrus.Info("Resposta da API ViaCEP: ", bodyString)
 
 	var viaCEPResponse ViaCEPResponse
 	if err := json.NewDecoder(resp.Body).Decode(&viaCEPResponse); err != nil {
@@ -86,13 +91,14 @@ func main() {
 		cepInfo, err := getCEPInfo(cep)
 		if err != nil {
 			http.Error(w, "can not find zipcode", http.StatusNotFound)
+			logrus.Error("Erro ao encontrar o CEP: ", err)
 			return
 		}
 
 		weatherInfo, err := getWeather(cepInfo.Localidade)
 		if err != nil {
 			http.Error(w, "error getting weather information", http.StatusInternalServerError)
-			logrus.Error("Error: ", err)
+			logrus.Error("Erro ao obter informações meteorológicas: ", err)
 			return
 		}
 
