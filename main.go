@@ -101,6 +101,13 @@ func main() {
 		logrus.Infof("WEATHER_API_KEY is set")
 	}
 
+	// Get the port from the environment variable
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+		logrus.Infof("Defaulting to port %s", port)
+	}
+
 	http.HandleFunc("/weather", func(w http.ResponseWriter, r *http.Request) {
 		cep := r.URL.Query().Get("cep")
 		logrus.Infof("CEP recebido: %s", cep)
@@ -141,5 +148,6 @@ func main() {
 		w.Write(compactJSON)
 	})
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	logrus.Infof("Starting server on port %s", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
