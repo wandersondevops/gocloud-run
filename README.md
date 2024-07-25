@@ -97,6 +97,6 @@ Para construir e executar o aplicativo usando Docker:
 
 1. URL para acessar a aplicação. Teste o endpoint:
     ```bash
-    curl "https://gocloud-run-rfdzcpvona-uc.a.run.app"
+    curl "https://cloudrun-main-rfdzcpvona-uc.a.run.app/"
     ```
 
