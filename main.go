@@ -27,23 +27,26 @@ type WeatherAPIResponse struct {
 }
 
 func getCEPInfo(cep string) (*ViaCEPResponse, error) {
-	logrus.Info("Consultando API ViaCEP para CEP: ", cep)
+	logrus.Infof("Consultando API ViaCEP para CEP: %s", cep)
 	resp, err := http.Get(fmt.Sprintf("https://viacep.com.br/ws/%s/json/", cep))
 	if err != nil {
+		logrus.Errorf("Erro ao consultar API ViaCEP: %v", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, _ := ioutil.ReadAll(resp.Body)
 	bodyString := string(bodyBytes)
-	logrus.Info("Resposta da API ViaCEP: ", bodyString)
+	logrus.Infof("Resposta da API ViaCEP: %s", bodyString)
 
 	var viaCEPResponse ViaCEPResponse
-	if err := json.NewDecoder(resp.Body).Decode(&viaCEPResponse); err != nil {
+	if err := json.Unmarshal(bodyBytes, &viaCEPResponse); err != nil {
+		logrus.Errorf("Erro ao decodificar resposta da API ViaCEP: %v", err)
 		return nil, err
 	}
 
 	if viaCEPResponse.CEP == "" {
+		logrus.Errorf("CEP não encontrado na resposta da API ViaCEP")
 		return nil, fmt.Errorf("CEP not found")
 	}
 
@@ -53,27 +56,34 @@ func getCEPInfo(cep string) (*ViaCEPResponse, error) {
 func getWeather(location string) (*WeatherAPIResponse, error) {
 	apiKey := os.Getenv("WEATHER_API_KEY")
 	if apiKey == "" {
+		logrus.Error("API key is missing")
 		return nil, fmt.Errorf("API key is missing")
 	}
-	logrus.Info("Weather API Key: ", apiKey)
+	logrus.Infof("Weather API Key: %s", apiKey)
 
 	locationEncoded := url.QueryEscape(location)
-	resp, err := http.Get(fmt.Sprintf("http://api.weatherapi.com/v1/current.json?key=%s&q=%s", apiKey, locationEncoded))
+	weatherAPIURL := fmt.Sprintf("http://api.weatherapi.com/v1/current.json?key=%s&q=%s", apiKey, locationEncoded)
+	logrus.Infof("Consultando WeatherAPI com URL: %s", weatherAPIURL)
+
+	resp, err := http.Get(weatherAPIURL)
 	if err != nil {
+		logrus.Errorf("Erro ao consultar API WeatherAPI: %v", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, _ := ioutil.ReadAll(resp.Body)
 	bodyString := string(bodyBytes)
-	logrus.Info("WeatherAPI Response Body: ", bodyString)
+	logrus.Infof("Resposta da API WeatherAPI: %s", bodyString)
 
 	if resp.StatusCode != http.StatusOK {
+		logrus.Errorf("WeatherAPI retornou status code %d: %s", resp.StatusCode, bodyString)
 		return nil, fmt.Errorf("WeatherAPI returned status code %d: %s", resp.StatusCode, bodyString)
 	}
 
 	var weatherResponse WeatherAPIResponse
-	if err := json.NewDecoder(resp.Body).Decode(&weatherResponse); err != nil {
+	if err := json.Unmarshal(bodyBytes, &weatherResponse); err != nil {
+		logrus.Errorf("Erro ao decodificar resposta da API WeatherAPI: %v", err)
 		return nil, err
 	}
 
@@ -81,8 +91,19 @@ func getWeather(location string) (*WeatherAPIResponse, error) {
 }
 
 func main() {
+	logrus.SetLevel(logrus.DebugLevel)
+
+	// Log the API key at startup
+	apiKey := os.Getenv("WEATHER_API_KEY")
+	if apiKey == "" {
+		logrus.Fatal("WEATHER_API_KEY environment variable is not set")
+	} else {
+		logrus.Infof("WEATHER_API_KEY is set")
+	}
+
 	http.HandleFunc("/weather", func(w http.ResponseWriter, r *http.Request) {
 		cep := r.URL.Query().Get("cep")
+		logrus.Infof("CEP recebido: %s", cep)
 		if len(cep) != 8 {
 			http.Error(w, "invalid zipcode", http.StatusUnprocessableEntity)
 			return
@@ -91,16 +112,18 @@ func main() {
 		cepInfo, err := getCEPInfo(cep)
 		if err != nil {
 			http.Error(w, "can not find zipcode", http.StatusNotFound)
-			logrus.Error("Erro ao encontrar o CEP: ", err)
+			logrus.Errorf("Erro ao encontrar o CEP: %v", err)
 			return
 		}
+		logrus.Infof("Informações do CEP: %+v", cepInfo)
 
 		weatherInfo, err := getWeather(cepInfo.Localidade)
 		if err != nil {
 			http.Error(w, "error getting weather information", http.StatusInternalServerError)
-			logrus.Error("Erro ao obter informações meteorológicas: ", err)
+			logrus.Errorf("Erro ao obter informações meteorológicas: %v", err)
 			return
 		}
+		logrus.Infof("Informações meteorológicas: %+v", weatherInfo)
 
 		weatherResponse := map[string]float64{
 			"temp_C": weatherInfo.Current.TempC,
@@ -112,6 +135,7 @@ func main() {
 		compactJSON, err := json.Marshal(weatherResponse)
 		if err != nil {
 			http.Error(w, "error generating JSON response", http.StatusInternalServerError)
+			logrus.Errorf("Erro ao gerar resposta JSON: %v", err)
 			return
 		}
 		w.Write(compactJSON)
