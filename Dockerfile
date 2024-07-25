@@ -1,33 +1,24 @@
-# Use the official Golang image to create a build artifact.
-# This is based on Debian and sets the GOPATH to /go.
-# https://hub.docker.com/_/golang
-FROM golang:1.19 AS builder
+# Use uma imagem base oficial do Go
+FROM golang:1.17-alpine
 
-# Create and change to the app directory.
+# Defina o diretório de trabalho dentro do contêiner
 WORKDIR /app
 
-# Copy go.mod and go.sum files
-COPY go.mod .
-COPY go.sum .
-
-# Download dependencies.
+# Copie o go.mod e o go.sum, e baixe as dependências
+COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy the source code.
+# Copie o código fonte da aplicação para o contêiner
 COPY . .
 
-# Build the application.
-RUN go build -v -o server
+# Compile a aplicação
+RUN go build -o main .
 
-# Use the official Debian slim image for a lean production container.
-# https://hub.docker.com/_/debian
-FROM debian:stable-slim
+# Defina a variável de ambiente PORT para 8080
+ENV PORT=8080
 
-# Copy the binary from the builder stage.
-COPY --from=builder /app/server /server
-
-# Expose port 8080 to the outside world
+# Exponha a porta que a aplicação usará
 EXPOSE 8080
 
-# Run the web service on container startup.
-CMD ["/server"]
+# Comando para iniciar a aplicação
+CMD ["./main"]
