@@ -1,24 +1,24 @@
-# Use uma imagem base oficial do Go
+# Use an official Go image
 FROM golang:1.17-alpine
 
-# Defina o diretório de trabalho dentro do contêiner
+# Set the working directory in the container
 WORKDIR /app
 
-# Copie o go.mod e o go.sum, e baixe as dependências
+# Copy go.mod and go.sum, and download dependencies
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copie o código fonte da aplicação para o contêiner
+# Copy the source code into the container
 COPY . .
 
-# Compile a aplicação
+# Build the Go application
 RUN go build -o main .
 
-# Defina a variável de ambiente PORT para 8080
+# Set the PORT environment variable
 ENV PORT=8080
 
-# Exponha a porta que a aplicação usará
+# Expose the port that the application will use
 EXPOSE 8080
 
-# Comando para iniciar a aplicação
+# Command to run the application
 CMD ["./main"]

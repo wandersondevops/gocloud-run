@@ -97,6 +97,6 @@ Para construir e executar o aplicativo usando Docker:
 
 1. URL para acessar a aplicação. Teste o endpoint:
     ```bash
-    curl "https://cloudrun-main-rfdzcpvona-uc.a.run.app/"
+    curl "https://gorun-cloud-571351426586.us-east1.run.app/weather?cep=01001000/"
     ```
 
